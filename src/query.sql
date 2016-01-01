@@ -45,13 +45,13 @@ values
   ('xslt');
 go
 update Langs
-set CrTagId = CrTags.Id
-  , SoTagId = SoTags.Id
-from #LanguageTags Langs
-inner join [cr114406].dbo.Tags as CrTags
-   on CrTags.TagName = Langs.TagName
-inner join [cr114406-so].dbo.Tags as SoTags
-   on SoTags.TagName = Langs.TagName;
+   set CrTagId = CrTags.Id
+     , SoTagId = SoTags.Id
+  from #LanguageTags Langs
+ inner join [cr114406].dbo.Tags as CrTags
+         on CrTags.TagName = Langs.TagName
+ inner join [cr114406-so].dbo.Tags as SoTags
+         on SoTags.TagName = Langs.TagName;
 
 
 declare @questionPost int = 1;
@@ -143,11 +143,9 @@ where
 /*Use this query to view full result set, or modify it
   according to your needs to aggregate from the #CrossPosts table.*/
 select distinct CP.*
-from #CrossPosts CP
-    /*Match at least one language tag from CR->SO per post
-      Note: We use `select distinct` on the query against #CrossPosts
-        due to SEDE timing out if attempting to do it during this query.*/
-    inner join #LanguageTags as Langs
-        on Langs.SoTagId = CP.SoTagId
+  from #CrossPosts CP
+    /*Match at least one language tag from CR->SO per post.*/
+ inner join #LanguageTags as Langs
+         on Langs.SoTagId = CP.SoTagId
         and Langs.CrTagId = CP.CrTagId
-order by [SO Created] desc;
+ order by [SO Created] desc;
