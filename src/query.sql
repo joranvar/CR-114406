@@ -22,6 +22,8 @@ if object_id('tempdb..#CrossPosts') is not null
 go
 create table #LanguageTags (
     TagName varchar(35) collate SQL_Latin1_General_CP1_CS_AS
+    , CrTagId int
+    , SoTagId int
     , constraint pk_#LanguageTags primary key (TagName)
 );
 go
@@ -42,6 +44,16 @@ values
   ('wolfram-mathematica'),
   ('xslt');
 go
+update Langs
+set CrTagId = CrTags.Id
+  , SoTagId = SoTags.Id
+from #LanguageTags Langs
+inner join [cr114406].dbo.Tags as CrTags
+   on CrTags.TagName = Langs.TagName
+inner join [cr114406-so].dbo.Tags as SoTags
+   on SoTags.TagName = Langs.TagName;
+
+
 declare @questionPost int = 1;
 declare @minutesFromSoPostToCrPost int = 120;
 declare @maximumCharacterCountDifferenceAllowed int = 1000;
@@ -89,6 +101,8 @@ select
   , [SO Created] = SoPosts.CreationDate
   , [Minutes to Xpost] = datediff(minute, SoPosts.CreationDate, CrPosts.CreationDate)
   , [Tags] = CrPosts.Tags
+  , [CrTagId] = CrPT.TagId
+  , [SoTagId] = SoPT.TagId
 
 /*Adding results into temp table to avoid timeouts in `select distinct`*/
 into #CrossPosts
@@ -113,12 +127,8 @@ from
       user on 2 different sites within our scoped time period.*/
     inner join [cr114406].dbo.PostTags as CrPT
         on CrPosts.Id = CrPT.PostId
-    inner join [cr114406].dbo.Tags as CrTags
-        on CrPT.TagId = CrTags.Id
     inner join [cr114406-so].dbo.PostTags as SoPT
         on SoPosts.Id = SoPT.PostId
-    inner join [cr114406-so].dbo.Tags as SoTags
-        on  SoPT.TagId = SoTags.Id
 
 where
     /*Q was first posted on SO, then later on CR*/
@@ -127,20 +137,17 @@ where
     /*Q was posted on CR within a certain number of minutes after being posted on SO*/
     and datediff(minute, SoPosts.CreationDate, CrPosts.CreationDate) <= @minutesFromSoPostToCrPost
 
-    /*Match at least one language tag from CR->SO per post
-      Note: We use `select distinct` on the query against #CrossPosts
-        due to SEDE timing out if attempting to do it during this query.*/
-    and CrTags.TagName = SoTags.TagName
-    and exists (
-        select 1 from #LanguageTags as Langs
-        where CrTags.TagName = Langs.TagName
-    )
-
     /*Apply filter based on character count difference of the body of both questions.*/
     and abs(len(CrPosts.Body) - len(SoPosts.Body)) <= @maximumCharacterCountDifferenceAllowed
 ;
 /*Use this query to view full result set, or modify it
   according to your needs to aggregate from the #CrossPosts table.*/
-select distinct *
-from #CrossPosts
+select distinct CP.*
+from #CrossPosts CP
+    /*Match at least one language tag from CR->SO per post
+      Note: We use `select distinct` on the query against #CrossPosts
+        due to SEDE timing out if attempting to do it during this query.*/
+    inner join #LanguageTags as Langs
+        on Langs.SoTagId = CP.SoTagId
+        and Langs.CrTagId = CP.CrTagId
 order by [SO Created] desc;
