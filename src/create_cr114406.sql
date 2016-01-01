@@ -37,17 +37,23 @@ CREATE TABLE [cr114406].dbo.[PostTypes] (
   , CONSTRAINT [PK_PostTypes] PRIMARY KEY CLUSTERED ( [Id] ASC ) ON [PRIMARY]
   ) ON [PRIMARY];
 
-IF 0 = 1--SPLIT
+IF 1 = 1--SPLIT
   BEGIN
 	SET ansi_nulls  ON
 	SET quoted_identifier  ON
 
 	CREATE TABLE [cr114406].dbo.[PostTags] (
 	  [PostId] [INT]    NOT NULL,
-	  [Tag]    [NVARCHAR](50)    NOT NULL
-	  , CONSTRAINT [PK_PostTags_1] PRIMARY KEY CLUSTERED ( [PostId] ASC,[Tag] ASC ) ON [PRIMARY]
+	  [TagId]  [INT]    NOT NULL
+	  , CONSTRAINT [PK_PostTags_1] PRIMARY KEY CLUSTERED ( [PostId] ASC,[TagId] ASC ) ON [PRIMARY]
 	  ) ON [PRIMARY]
-  
+
+	CREATE TABLE [cr114406].dbo.[Tags] (
+	  [Id]   [INT]    NOT NULL,
+	  [TagName] [VARCHAR](35) collate SQL_Latin1_General_CP1_CS_AS   NOT NULL
+	  , CONSTRAINT [PK_Tags_1] PRIMARY KEY CLUSTERED ( [Id] ASC,[TagName] ASC ) ON [PRIMARY]
+	  ) ON [PRIMARY]
+
   END;
 INSERT [cr114406].dbo.[VoteTypes] ([Id], [Name]) VALUES(1, N'AcceptedByOriginator');
 INSERT [cr114406].dbo.[VoteTypes] ([Id], [Name]) VALUES(2, N'UpMod');
@@ -121,7 +127,8 @@ CREATE TABLE [cr114406].dbo.[Users] (
   [Reputation]     [INT]    NOT NULL,
   [UpVotes]        [INT]    NOT NULL,
   [Views]          [INT]    NOT NULL,
-  [WebsiteUrl]     [NVARCHAR](200)    NULL
+  [WebsiteUrl]     [NVARCHAR](200)    NULL,
+  [AccountId]      [INT]    NOT NULL
   , CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED ( [Id] ASC ) ON [PRIMARY]
   ) ON [PRIMARY];
 
@@ -140,8 +147,9 @@ CREATE TABLE [cr114406].dbo.[Posts] (
   [Id]                    [INT]    NOT NULL,
   [AcceptedAnswerId]      [INT]    NULL,
   [AnswerCount]           [INT]    NULL,
-  [Body]                  [NTEXT]    NOT NULL,
+  [Body]                  [NVARCHAR](MAX)    NOT NULL,
   [ClosedDate]            [DATETIME]    NULL,
+  [DeletionDate]            [DATETIME]    NULL,
   [CommentCount]          [INT]    NULL,
   [CommunityOwnedDate]    [DATETIME]    NULL,
   [CreationDate]          [DATETIME]    NOT NULL,
