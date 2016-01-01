@@ -142,7 +142,26 @@ where
 ;
 /*Use this query to view full result set, or modify it
   according to your needs to aggregate from the #CrossPosts table.*/
-select distinct CP.*
+select distinct
+       CP.[Primary Stack]
+     , CP.[Primary User]
+     , CP.[SO Original]
+     , CP.[CR Xpost]
+     , CP.[CharCountDiff]
+     , CP.[SO Score]
+     , CP.[CR Score]
+     , CP.[SO Status]
+     , CP.[CR Status]
+     , CP.[DugaComments?]
+     , CP.[SO Answers]
+     , CP.[CR Answers]
+     , CP.[SO Accept?]
+     , CP.[CR Accept?]
+     , CP.[SO Created]
+     , CP.[Minutes to Xpost]
+     , CP.[Tags]
+     , CP.[CrTagId]
+     , CP.[SoTagId]
   from #CrossPosts CP
     /*Match at least one language tag from CR->SO per post.*/
  inner join #LanguageTags as Langs
