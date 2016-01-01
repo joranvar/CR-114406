@@ -48,10 +48,10 @@ declare @maximumCharacterCountDifferenceAllowed int = 1000;
 
 select
     [Primary Stack] = case
-        when SoUsers.Reputation >= CrUsers.Reputation then 
+        when SoUsers.Reputation >= CrUsers.Reputation then
             'Stack Overflow'
-        else 
-            'Code Review' 
+        else
+            'Code Review'
         end
   , [Primary User] = case
         when SoUsers.Reputation >= CrUsers.Reputation then
@@ -82,9 +82,9 @@ select
         ) then 'True' end
   , [SO Answers] = SoPosts.AnswerCount
   , [CR Answers] = CrPosts.AnswerCount
-  , [SO Accept?] = case 
+  , [SO Accept?] = case
         when SoPosts.AcceptedAnswerId is not null then 'True' end
-  , [CR Accept?] = case 
+  , [CR Accept?] = case
         when CrPosts.AcceptedAnswerId is not null then 'True' end
   , [SO Created] = SoPosts.CreationDate
   , [Minutes to Xpost] = datediff(minute, SoPosts.CreationDate, CrPosts.CreationDate)
@@ -120,7 +120,7 @@ from
     inner join [cr114406-so].dbo.Tags as SoTags
         on  SoPT.TagId = SoTags.Id
 
-where 
+where
     /*Q was first posted on SO, then later on CR*/
     SoPosts.CreationDate < CrPosts.CreationDate
 
@@ -139,7 +139,7 @@ where
     /*Apply filter based on character count difference of the body of both questions.*/
     and abs(len(CrPosts.Body) - len(SoPosts.Body)) <= @maximumCharacterCountDifferenceAllowed
 ;
-/*Use this query to view full result set, or modify it 
+/*Use this query to view full result set, or modify it
   according to your needs to aggregate from the #CrossPosts table.*/
 select distinct *
 from #CrossPosts
