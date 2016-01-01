@@ -5,8 +5,8 @@
  *   again on CR (albeit often slightly modified in the way it is titled or phrased).
  * Querying from 2 or more sites requires cross-database queries, and the following
  *   2 databases are used here. All relevant tables are in the [dbo] schema.
- * - Stack Overflow DB: [StackOverflow]
- * - Code Review DB:    [StackExchange.Codereview]
+ * - Stack Overflow DB: [cr114406-so]
+ * - Code Review DB:    [cr114406]
  * 2 temporary tables are used in order to compensate for the physsical limitations
  *   of SEDE which otherwise will often time out before the query is completed.
  * param @minutesFromSoPostToCrPost int not null : The number of minutes allowed between the original
@@ -56,8 +56,8 @@ select
   , [Primary User] = case
         when SoUsers.Reputation >= CrUsers.Reputation then
             'http://stackoverflow.com/users/' + convert(varchar(10), SoUsers.Id) + '|' + SoUsers.DisplayName
-        else 
-            'http://codereview.stackexchange.com/users/' + convert(varchar(10), CrUsers.Id) + '|' + CrUsers.DisplayName 
+        else
+            'http://codereview.stackexchange.com/users/' + convert(varchar(10), CrUsers.Id) + '|' + CrUsers.DisplayName
         end
         , [SO Original] = 'http://stackoverflow.com/questions/' + convert(varchar(10), SoPosts.Id) + '|' + SoPosts.Title
         , [CR Xpost] = 'http://codereview.stackexchange.com/questions/' + convert(varchar(10), CrPosts.Id) + '|' + CrPosts.Title
@@ -76,7 +76,7 @@ select
   /*Check in @Duga comments*/
   , [DugaComments?] = case
         when exists (
-            select 1 from [StackOverflow].dbo.Comments as SoComments
+            select 1 from [cr114406-so].dbo.Comments as SoComments
             where SoPosts.Id = SoComments.PostId
             and SoComments.Text like '%code%review%'
         ) then 'True' end
@@ -94,30 +94,30 @@ select
 into #CrossPosts
 from
     /*Common users across CR and SO sites:*/
-    [StackExchange.Codereview].dbo.Users as CrUsers
-    inner join [StackOverflow].dbo.Users as SoUsers
+    [cr114406].dbo.Users as CrUsers
+    inner join [cr114406-so].dbo.Users as SoUsers
         /*AccountId is network-wide Id for each user, and
           is distinct from the UserId which is for a specific site*/
         on  CrUsers.AccountId = SoUsers.AccountId
 
     /*Questions by user on both sites:*/
-    inner join [StackExchange.Codereview].dbo.Posts as CrPosts
+    inner join [cr114406].dbo.Posts as CrPosts
         on  CrUsers.Id = CrPosts.OwnerUserId
         and CrPosts.PostTypeId = @questionPost
-    inner join [StackOverflow].dbo.Posts as SoPosts
+    inner join [cr114406-so].dbo.Posts as SoPosts
         on  SoUsers.Id = SoPosts.OwnerUserId
         and SoPosts.PostTypeId = @questionPost
 
     /*Bring in tags so we can try to eliminate false matches
       due to unrelated posts potentially being posted by the same
       user on 2 different sites within our scoped time period.*/
-    inner join [StackExchange.Codereview].dbo.PostTags as CrPT
+    inner join [cr114406].dbo.PostTags as CrPT
         on CrPosts.Id = CrPT.PostId
-    inner join [StackExchange.Codereview].dbo.Tags as CrTags
+    inner join [cr114406].dbo.Tags as CrTags
         on CrPT.TagId = CrTags.Id
-    inner join [StackOverflow].dbo.PostTags as SoPT
+    inner join [cr114406-so].dbo.PostTags as SoPT
         on SoPosts.Id = SoPT.PostId
-    inner join [StackOverflow].dbo.Tags as SoTags
+    inner join [cr114406-so].dbo.Tags as SoTags
         on  SoPT.TagId = SoTags.Id
 
 where 
