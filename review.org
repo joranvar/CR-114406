@@ -1,0 +1,120 @@
+#+OPTIONS: toc:nil ^:{}
+
+* Style
+
+I like your style.  I don't mind reading keywords in lowercase.  I
+think it's easier on the eyes, but then again, I'm fairly used to
+case-sensitive languages with lowercase keywords and syntax
+highlighting.
+
+I'm also very fond of the prefix column aliases as opposed to the
+postfix =AS Alias= style that is mainstream.
+
+Bug if I /would/ have to nitpick: the hanging comma in the =create table=
+statement messes with the alignment of the column names.  There :)
+
+
+* Filter-join on lookup table
+
+The joins on both =Tags= tables is very deeply nested.  Which means,
+that for each and every =Post=, SQL will join with each and every
+=PostTag= (which is unavoidable, because they are needed in an
+unfortunate m-to-n match-and-filter), and then for each of those, it
+will join with the =Tags= table.
+
+The =Tags= table is actually not needed in this join.  We can
+pre-lookup all the tags that we want to use, by adding their
+respective =TagId= values to the =#LanguageTags= temp table as
+follows:
+
+#+BEGIN_SRC sql
+  create table #LanguageTags (
+      TagName varchar(35) collate SQL_Latin1_General_CP1_CS_AS
+      , CrTagId int
+      , SoTagId int
+      , constraint pk_#LanguageTags primary key (TagName)
+  );
+  go
+  insert into #LanguageTags (TagName)
+  values
+    ('applescript'),
+    ('asp.net-mvc-3'),
+    ('bash'),
+    ('brainfuck'),
+    ('c'),
+    ('c#'),
+    ('c++'),
+
+    /*SNIP...*/
+
+    ('sql'),
+    ('swift'),
+    ('wolfram-mathematica'),
+    ('xslt');
+  go
+  update Langs
+     set CrTagId = CrTags.Id
+       , SoTagId = SoTags.Id
+    from #LanguageTags Langs
+   inner join [StackExchange.CodeReview].dbo.Tags as CrTags
+           on CrTags.TagName = Langs.TagName
+   inner join [StackOverflow].dbo.Tags as SoTags
+           on SoTags.TagName = Langs.TagName;
+#+END_SRC
+
+Now we can use this table to filter tags that we want to see by
+=TagId=, and we can also join the posts from both sites to a single
+table now.
+
+* SEDE and cross database queries
+
+It seems that SEDE is not really optimized to join the large database
+tables to temp tables.  So when we put the join described above inside
+the fetching query, we get a timeout.  The solution: store the =TagId=
+values in the temp table:
+
+#+BEGIN_SRC sql
+  select
+    -- SNIP
+    , [Tags] = CrPosts.Tags
+    , [CrTagId] = CrPT.TagId
+    , [SoTagId] = SoPT.TagId
+#+END_SRC
+
+and then filter-and-distinct on the =#LanguageTags= table in the final
+query:
+
+#+BEGIN_SRC sql
+  select distinct
+         CP.[Primary Stack]
+       , CP.[Primary User]
+       , CP.[SO Original]
+       , CP.[CR Xpost]
+       , CP.[CharCountDiff]
+       , CP.[SO Score]
+       , CP.[CR Score]
+       , CP.[SO Status]
+       , CP.[CR Status]
+       , CP.[DugaComments?]
+       , CP.[SO Answers]
+       , CP.[CR Answers]
+       , CP.[SO Accept?]
+       , CP.[CR Accept?]
+       , CP.[SO Created]
+       , CP.[Minutes to Xpost]
+       , CP.[Tags]
+       , CP.[CrTagId]
+       , CP.[SoTagId]
+    from #CrossPosts CP
+      /*Match at least one language tag from CR->SO per post.*/
+   inner join #LanguageTags as Langs
+           on Langs.SoTagId = CP.SoTagId
+          and Langs.CrTagId = CP.CrTagId
+   order by [SO Created] desc;
+#+END_SRC
+
+Turns out that this is quite a bit faster, as the query now returns
+
+#+BEGIN_QUOTE
+1130 rows returned in 4166 ms
+#+END_QUOTE
