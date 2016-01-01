@@ -6,7 +6,7 @@ TESTDIR  ?= test/
 all: db test
 
 .PHONY: db
-db: bin/cr114406.db
+db: bin/cr114406.db bin/cr114406-so.db
 
 .PHONY: test
 test: test/cr114406/test.sql.success
